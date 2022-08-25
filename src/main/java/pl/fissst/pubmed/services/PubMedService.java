@@ -52,11 +52,11 @@ import java.util.*;
 
     public Map<String,Integer> getDoctors(String disease){
         String query=disease.strip().replace(' ','+');
-        return getAuthorsName(getArticlesUIDS(getDatabasesWithArticles(query),query));
+        return getAuthorsNames(getArticlesUIDS(getCountOfArticlesInDatabases(query),query));
     }
 
 
-    private Map<String,Integer> getDatabasesWithArticles(String disease) {
+    private Map<String,Integer> getCountOfArticlesInDatabases(String disease) {
         Map<String,Integer> dbs=new HashMap();
         UriComponents egQueryUrl = UriComponentsBuilder.newInstance()
                 .scheme(SCHEME).host(HOST)
@@ -114,7 +114,7 @@ import java.util.*;
         return uids;
     }
 
-    private Map<String,Integer> getAuthorsName(Map<String,List<String>> uidsAndDbs) {
+    private Map<String,Integer> getAuthorsNames(Map<String,List<String>> uidsAndDbs) {
         Map<String,Integer> authors = new HashMap<>();
 
         MultiValueMap<String,String> queryParams=new LinkedMultiValueMap<>(){{
