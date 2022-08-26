@@ -7,6 +7,7 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -14,12 +15,14 @@ import pl.fissst.pubmed.dto.*;
 import pl.fissst.pubmed.dto.efetch.EFetch;
 import pl.fissst.pubmed.dto.esearch.ESearch;
 
+import javax.validation.constraints.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
-    public class PubMedService {
+@Validated
+public class PubMedService {
 
     private final static Logger LOG = LoggerFactory.getLogger(PubMedService.class);
 
@@ -51,9 +54,6 @@ import java.util.*;
 
     private final Integer RETMAX_DEFAULT=10000;
     private final Integer RETSTART_DEFAULT=0;
-    private final SortType SORT=SortType.COUNT;
-    private final OrderType ORDER=OrderType.DESC;
-
 
     private final String API_KEY_VALUE;
 
@@ -62,33 +62,29 @@ import java.util.*;
         this.API_KEY_VALUE = api_key_value;
     }
 
-    public PubMedAuthors getAuthorsPaginated(String disease, Integer size, Integer page, SortType sort, OrderType order){
+    public PubMedAuthors getAuthorsPaginated(@NotNull @NotBlank String disease,@Min(value = 0L) @Max(value = 1000L) Integer size,@Min(value = 0) Integer page){
         PubMedAuthors pubMedAuthors = PubMedAuthors.builder()
-                .order(order)
-                .sort(sort)
                 .requestedPage(page)
                 .perPage(size)
-                .authors(new ArrayList<>())
+                .pagesCount(0)
+                .authors(new HashMap<>())
                 .build();
         getNamesByUIDS(getUIDS(getDisease(disease),pubMedAuthors),pubMedAuthors);
-        sort(pubMedAuthors);
+
         return pubMedAuthors;
     }
 
-    public List<PubMedAuthor> getAllAuthors(String disease){
+    public Map<String,Integer> getAllAuthors(@NotNull @NotBlank String disease){
         PubMedAuthors pubMedAuthors = PubMedAuthors.builder()
-                .order(ORDER)
-                .sort(SORT)
                 .requestedPage(RETSTART_DEFAULT)
                 .perPage(RETMAX_DEFAULT)
-                .authors(new ArrayList<>())
+                .pagesCount(1)
+                .authors(new HashMap<>())
                 .build();
-        getNamesByUIDS(getUIDS(getDisease(disease),pubMedAuthors),pubMedAuthors);
-        for (Integer i=1; i<=pubMedAuthors.getPagesCount();i++){
+        for (Integer i=0; i<pubMedAuthors.getPagesCount();i++){
             pubMedAuthors.setRequestedPage(i);
             getNamesByUIDS(getUIDS(getDisease(disease),pubMedAuthors),pubMedAuthors);
         }
-        sort(pubMedAuthors);
         return pubMedAuthors.getAuthors();
     }
 
@@ -102,27 +98,21 @@ import java.util.*;
                     .build();
             long befor=System.currentTimeMillis();
             PubMedAuthors pubMedAuthors = PubMedAuthors.builder()
-                    .order(ORDER)
-                    .sort(SORT)
                     .requestedPage(RETSTART_DEFAULT)
+                    .pagesCount(1)
                     .perPage(RETMAX_DEFAULT)
-                    .authors(new ArrayList<>())
+                    .authors(new HashMap<>())
                     .build();
 
             List<String> uids = new ArrayList<>();
-            uids.addAll(getUIDS(getDisease(disease),pubMedAuthors));
-            info.setArticleCount(info.getArticleCount()+uids.size());
-            getNamesByUIDS(uids,pubMedAuthors);
-            uids.clear();
 
-            for (Integer i=1; i<=pubMedAuthors.getPagesCount();i++){
+            for (Integer i=0; i<pubMedAuthors.getPagesCount();i++){
                 pubMedAuthors.setRequestedPage(i);
                 uids.addAll(getUIDS(getDisease(disease),pubMedAuthors));
                 info.setArticleCount(info.getArticleCount()+uids.size());
                 getNamesByUIDS(uids,pubMedAuthors);
                 uids.clear();
             }
-            sort(pubMedAuthors);
             info.setAuthorsCount((long)pubMedAuthors.getAuthors().size());
             long after=System.currentTimeMillis();
             info.setTime(after-befor);
@@ -161,7 +151,6 @@ import java.util.*;
 
 
     private PubMedAuthors getNamesByUIDS(List<String> uids,PubMedAuthors pubMedAuthors){
-        Map<String,Integer> nameIndex = new HashMap<>();
         String uidsConnected=getConnectedUIDS(uids);
         if(uidsConnected!=null){
             MultiValueMap<String,String> queryParams=new LinkedMultiValueMap<>(){{
@@ -169,8 +158,8 @@ import java.util.*;
                 add(API_KEY,API_KEY_VALUE);
                 add(DB,DB_PUBMED);
                 add(ID,uidsConnected);
-                add(RETMAX,pubMedAuthors.getPerPage().toString());
-                add(RETSTART,pubMedAuthors.getRequestedPage().toString());
+                add(RETMAX,RETMAX_DEFAULT.toString());
+                add(RETSTART,RETSTART_DEFAULT.toString());
             }};
 
             UriComponents efetchUrl = UriComponentsBuilder.newInstance()
@@ -190,11 +179,7 @@ import java.util.*;
                                                     author.getAffiliationInfo().getAffiliation().contains(COUNTRY)
                                                     &&
                                                     author.getLastName().length()>1 && author.getForeName().length()>1){
-                                                    String name= author.getForeName()+" "+author.getLastName();
-                                                    pubMedAuthors.setAuthorAndIncrement(name,nameIndex.get(name));
-                                                    if(nameIndex.get(name)==null) {
-                                                        nameIndex.put(name,pubMedAuthors.getAuthors().size()-1);
-                                                    }
+                                                    pubMedAuthors.setAuthorAndIncrement(author.getForeName()+" "+author.getLastName());
                                             }
                                         }
                                 );
@@ -208,7 +193,7 @@ import java.util.*;
     }
 
     private Integer getPages(Integer perPage,Integer count){
-        return (count/perPage+(count%perPage==0 ? 0 : 1))-1;
+        return (count/perPage+(count%perPage==0 ? 0 : 1));
     }
 
     private String getConnectedUIDS(List<String> uids){
@@ -222,24 +207,6 @@ import java.util.*;
             uidsString.deleteCharAt(index);
         return uidsString.toString();
     }
-
-    private void sort(PubMedAuthors pubMedAuthors){
-        if(pubMedAuthors.getSort()==SortType.COUNT){
-            if(pubMedAuthors.getOrder()==OrderType.ASC){
-                pubMedAuthors.getAuthors().sort(Comparator.comparing(PubMedAuthor::getCount));
-            }else{
-                pubMedAuthors.getAuthors().sort(Comparator.comparing(PubMedAuthor::getCount).reversed());
-            }
-        }else {
-            if(pubMedAuthors.getOrder()==OrderType.ASC){
-                pubMedAuthors.getAuthors().sort(Comparator.comparing(PubMedAuthor::getName));
-            }else{
-                pubMedAuthors.getAuthors().sort(Comparator.comparing(PubMedAuthor::getName).reversed());
-            }
-        }
-    }
-
-
 
 
 }

@@ -15,18 +15,16 @@ public class PubMedController {
     private final PubMedService service;
 
     @GetMapping("/paginated")
-    public  PubMedAuthors getAuthorsPaginated(
+    public PubMedAuthors getAuthorsPaginated(
             @RequestParam(name = "disease",required = true) String disease,
             @RequestParam(name = "size",required = false,defaultValue = "10000")Integer size,
-            @RequestParam(name = "page",required = false,defaultValue = "0")Integer page,
-            @RequestParam(name = "sort",required = false,defaultValue = "COUNT") SortType sort,
-            @RequestParam(name = "order",required = false,defaultValue = "DESC") OrderType order
+            @RequestParam(name = "page",required = false,defaultValue = "0")Integer page
     ){
-        return service.getAuthorsPaginated(disease,size,page,sort,order);
+        return service.getAuthorsPaginated(disease,size,page);
     }
 
     @GetMapping("/all")
-    public List<PubMedAuthor> getAllAuthors(
+    public Map<String,Integer> getAllAuthors(
             @RequestParam(name = "disease",required = true) String disease
     ){
         return service.getAllAuthors(disease);
