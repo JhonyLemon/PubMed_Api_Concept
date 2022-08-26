@@ -1,5 +1,7 @@
 package pl.fissst.pubmed.services;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.stereotype.Service;
@@ -8,6 +10,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
+import pl.fissst.pubmed.dto.Disease;
 import pl.fissst.pubmed.dto.efetch.EFetch;
 import pl.fissst.pubmed.dto.egquery.EGQuery;
 import pl.fissst.pubmed.dto.esearch.ESearch;
@@ -18,6 +21,8 @@ import java.util.*;
 
 @Service
     public class PubMedService {
+
+    private final static Logger LOG = LoggerFactory.getLogger(PubMedService.class);
 
     private final String SCHEME = "https";
     private final String HOST = "eutils.ncbi.nlm.nih.gov";
@@ -41,13 +46,31 @@ import java.util.*;
 
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd");
     private final RestTemplate restTemplate;
-    private final Integer RETMAX_NUMBER=100;
+    private final Integer RETMAX_NUMBER=10000;
 
     private final String API_KEY_VALUE;
 
     public PubMedService(RestTemplateBuilder builder,@Value("${pubmed.api_key}") String api_key_value) {
         this.restTemplate = builder.build();
         this.API_KEY_VALUE = api_key_value;
+    }
+
+    public Disease getInfo(String disease){
+        long befor=System.currentTimeMillis();
+        String query=disease.strip().replace(' ','+');
+        LOG.info("Disease: "+query);
+        Disease diseases = new Disease();
+        Map<String,Integer> dbs=  getCountOfArticlesInDatabases(query);
+        Map<String,List<String>> uids=getArticlesUIDS(dbs,query);
+        Map<String,Integer> authors = getAuthorsNames(uids);
+        long after=System.currentTimeMillis();
+        diseases.setTime((after-befor));
+        diseases.setAuthorsCount((long)authors.size());
+        diseases.setArticleCount(0L);
+        uids.keySet().forEach(key->{
+            diseases.setArticleCount(diseases.getArticleCount()+(long)uids.get(key).size());
+        });
+        return diseases;
     }
 
     public Map<String,Integer> getDoctors(String disease){
@@ -94,14 +117,15 @@ import java.util.*;
         }};
 
         dbsAndCount.forEach((dbName,articleCount)->{
-           for( Integer i=0;i<articleCount/RETMAX_NUMBER+(articleCount%RETMAX_NUMBER==0 ? 0 : 1); i++){
+            Integer count=articleCount;
+           for( Integer i=0;i<count/RETMAX_NUMBER+(count%RETMAX_NUMBER==0 ? 0 : 1); i++){
                queryParams.set(DB,dbName);
                queryParams.set(RETSTART,i.toString());
                UriComponents eSearchUrl = UriComponentsBuilder.newInstance()
                        .scheme(SCHEME).host(HOST)
                        .path(ESEARCH).queryParams(queryParams).build();
                ESearch eSearch = restTemplate.getForObject(eSearchUrl.toString(),ESearch.class);
-
+               count=Integer.valueOf(eSearch.getCount());
 
                if(eSearch.getIdList().getIds()!=null) {
                    eSearch.getIdList().getIds().forEach(id -> {
@@ -111,6 +135,7 @@ import java.util.*;
             }
 
         });
+
         return uids;
     }
 
@@ -134,7 +159,9 @@ import java.util.*;
 
             StringBuilder uidsString = new StringBuilder();
             uids.forEach(x-> uidsString.append(x.toString()+","));
-            uidsString.deleteCharAt(uidsString.length()-1);
+            Integer index=uidsString.lastIndexOf(",");
+            if(index!=-1)
+                uidsString.deleteCharAt(index);
 
             queryParams.set(DB,dbName);
             queryParams.set(ID,uidsString.toString());
