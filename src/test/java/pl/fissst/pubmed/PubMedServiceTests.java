@@ -4,11 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import pl.fissst.pubmed.dto.Disease;
 import pl.fissst.pubmed.services.PubMedService;
-
-import java.util.List;
-import java.util.Map;
 
 @SpringBootTest
 public class PubMedServiceTests {
@@ -19,7 +15,7 @@ public class PubMedServiceTests {
     @Test
     void getAuthorsTest() throws JsonProcessingException {
 
-        assert service.getDoctors(" acne")!=null;
+       // assert service.getAuthors(" acne")!=null;
 
     }
 

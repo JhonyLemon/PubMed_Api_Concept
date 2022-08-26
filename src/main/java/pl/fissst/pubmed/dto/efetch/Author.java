@@ -4,11 +4,9 @@ import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import lombok.*;
 
 @Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@ToString
 public class Author {
     @JacksonXmlProperty(localName = "LastName")
     private String lastName;

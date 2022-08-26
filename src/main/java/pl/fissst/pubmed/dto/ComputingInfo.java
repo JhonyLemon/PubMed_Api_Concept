@@ -2,13 +2,11 @@ package pl.fissst.pubmed.dto;
 
 import lombok.*;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@ToString
-public class Disease {
+public class ComputingInfo {
 
     private Long articleCount;
     private Long authorsCount;

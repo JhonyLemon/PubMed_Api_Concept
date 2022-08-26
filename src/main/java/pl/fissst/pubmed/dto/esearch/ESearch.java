@@ -10,19 +10,17 @@ import lombok.*;
 import java.util.List;
 
 @Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@ToString
 public class ESearch {
 
     @JacksonXmlProperty(localName = "Count")
-    private String count;
+    private Integer count;
     @JacksonXmlProperty(localName = "RetMax")
-    private String retMax;
+    private Integer retMax;
     @JacksonXmlProperty(localName = "RetStart")
-    private String retStart;
+    private Integer retStart;
     @JacksonXmlProperty(localName = "IdList")
     private IdList idList;
     @JacksonXmlProperty(localName = "QueryTranslation")
