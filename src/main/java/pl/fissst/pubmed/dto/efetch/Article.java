@@ -8,12 +8,6 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class Article {
-    @JacksonXmlProperty(localName = "ArticleTitle")
-    private String articleTitle;
     @JacksonXmlProperty(localName = "AuthorList")
     private AuthorList authorList;
-    @JacksonXmlProperty(localName = "Language")
-    private String language;
-    @JacksonXmlProperty(localName = "ArticleDate")
-    private Date articleDate;
 }
